@@ -2,7 +2,7 @@
 from optparse import OptionParser
 import sys
 import csv
-import pdb
+import ipdb
 
 import homework_02.src.common as common
 
@@ -37,9 +37,9 @@ def main():
         help="Write to this file rather than stdout.  [default: %default]",
         action="store", dest='outfilename', default=None)
 
-    pdb.set_trace()
-    (options, args) = parser.parse_args()
+    ipdb.set_trace()
 
+    (options, args) = parser.parse_args()
     ### Parse args
     # Raise an exception if the length of args is greater than 1
     assert len(args) <= 1
@@ -70,17 +70,27 @@ def cut_file(infile, outfile, delimiter=',', keep_list=None):
     Write later, if module interface is needed.
     """
     ## Get the csv reader and writer.  Use these to read/write the files.
-
+    reader = csv.reader(infile, delimiter=delimiter)
+        
     ## Extract the first row of the file
-
+    header = reader.next()
+    
+    ## Get the indices in the file that we will keep
+    keep_index = [header.index(nm) for nm in keep_list]
+    assert len(keep_index) >= 1 
+    
+    header_new = [header[idx] for idx in keep_index]
+    
     ## Get and write the new header
+    writer = csv.writer(outfile, delimiter=',')
+    writer.writerow(header_new)
 
     ## Get the indices in the file that we will keep
-
     ## Iterate through the file, printing out the reformatted lines 
-
+    keep_data = [[row[idx] for idx in keep_index] for row in reader]
+    writer.writerows(keep_data)
     ## pass just means "do nothing".  Remove it from your final version.
-    pass
+    #pass
 
 
 
