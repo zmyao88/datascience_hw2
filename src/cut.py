@@ -76,10 +76,14 @@ def cut_file(infile, outfile, delimiter=',', keep_list=None):
     header = reader.next()
     
     ## Get the indices in the file that we will keep
-    keep_index = [header.index(nm) for nm in keep_list]
-    assert len(keep_index) >= 1 
-    
-    header_new = [header[idx] for idx in keep_index]
+    try:
+        keep_index = [header.index(nm) for nm in keep_list]
+        header_new = [header[idx] for idx in keep_index]
+    #assert len(keep_index) >= 1 
+    except TypeError:
+        print "keep_index is None, no new header"
+        keep_index = None
+        header_new = ''
     
     ## Get and write the new header
     writer = csv.writer(outfile, delimiter=',')
@@ -87,7 +91,11 @@ def cut_file(infile, outfile, delimiter=',', keep_list=None):
 
     ## Get the indices in the file that we will keep
     ## Iterate through the file, printing out the reformatted lines 
-    keep_data = [[row[idx] for idx in keep_index] for row in reader]
+    try:
+        keep_data = [[row[idx] for idx in keep_index] for row in reader]
+    except TypeError:
+        print "keep_list is None, no data were cut"
+        keep_data = ['' for row in reader]
     writer.writerows(keep_data)
     ## pass just means "do nothing".  Remove it from your final version.
     #pass
