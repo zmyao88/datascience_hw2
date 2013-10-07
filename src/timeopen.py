@@ -6,7 +6,7 @@ from datetime import datetime
 from dateutil.parser import parse
 
 import homework_02.src.common as common
-
+import ipdb
 ### Constants
 SECONDSINADAY = 24 * 60 * 60
 
@@ -58,7 +58,7 @@ def main():
     # Only deal with the case of one or no infiles
     assert len(args) <= 1
     infilename = args[0] if args else None
-
+    
     # Deal with tabs
     if options.delimiter in ['t', '\\t', '\t', 'tab']:
         options.delimiter = '\t'
@@ -81,22 +81,37 @@ def add_timeopen(
     Write later, if module interface is needed.
     """
     # Get the csv reader and writer.  Use these to read/write the files.
-
+    reader = csv.reader(infile, delimiter = delimiter)
+    writer = csv.writer(outfile, delimiter = delimiter) 
     ## Extract, modify, and write the header
+    header = reader.next()
+    header = [item.lower() for item in header]
+    header.append("timeopen")
+    writer.writerow(header)
 
     # Set a variable called 'now', depending on whether we passed nowstring
     # or not.  Try using 'parse'
-
+    if nowstring is None:
+        now = datetime.now()
+    else:
+        now = parse(nowstring) 
     ## Get the indicies corresponding to columns that are needed to make
     ## timeopen
+    status_idx = header.index('status')
+    opened_idx = header.index('opened')
+    closed_idx = header.index('closed')
 
     ## Iterate through the file, add timeopen to each row, print
+    #ipdb.set_trace()
     for row in reader:
         try:
-            pass
+            timeopen = _get_timeopen(row, status_idx, opened_idx, closed_idx, now)
+            row.append(timeopen)
+            writer.writerow(row)
             # Get timeopen by calling _get_timeopen, write the new row
         except common.BadDataError as e:
             # write an error message
+            sys.stderr.write(e.message)
             pass
 
 
@@ -115,7 +130,18 @@ def _get_timeopen(row, status_idx, opened_idx, closed_idx, now):
     """
     # Call _checkstatus.  Exception will be raised if status is wrong.
     # It will be caught up one level.
-
+    status = row[status_idx]
+    opendate = row[opened_idx]
+    closedate = row[closed_idx]
+    
+    # Check data quality by calling _checkstatus
+    _checkstatus(status, opendate, closedate, row)
+    
+    # control flow for both closed cases and open cases
+    if status == 'Closed':
+        return _get_timeopen_closedticket(opendate, closedate)
+    else: 
+        return _get_timeopen_openticket(opendate, now)
 
 def _checkstatus(status, opendate, closedate, row):
     """
@@ -133,10 +159,24 @@ def _checkstatus(status, opendate, closedate, row):
     # Start out by setting 'allok = True' then cycle through conditions
     # under which you may have to set 'allok = False'
     allok = True
-
+    
+#    if not (closedate != '' and status == 'Closed'):
+ #       allok = False
+    if opendate == '':
+        allok = False
+    elif closedate != '' and status == 'Open':
+        allok = False
+    elif closedate == '' and status == 'Closed':
+        allok = False
+    if status not in ('Open', 'Closed'):
+        allok = False
+    
     # if not allok raise an exception and give an error message
     if not allok:
-        pass
+        message = "BadDataError.  Bad status. row = %s\n" % row
+        raise common.BadDataError(message)
+    pass
+
 
 
 def _get_timeopen_closedticket(opendate, closedate):
@@ -152,7 +192,11 @@ def _get_timeopen_closedticket(opendate, closedate):
         MM/DD/YYYY HH:MM XM
     """
     # Convert opendate and closedate to datetime objects. Use 'parse'
-
+    opendate = parse(opendate)
+    closedate = parse(closedate)
+    timeopen = closedate - opendate
+    timeopen = timeopen.days * SECONDSINADAY + timeopen.seconds
+    return timeopen
 
 def _get_timeopen_openticket(opendate, now):
     """
@@ -167,7 +211,10 @@ def _get_timeopen_openticket(opendate, now):
         Gives the current time
     """
     # Convert opendate to a datetime object
-
+    opendate = parse(opendate)
+    timeopen = now - opendate
+    timeopen = timeopen.days * SECONDSINADAY + timeopen.seconds
+    return timeopen
 
     
 
