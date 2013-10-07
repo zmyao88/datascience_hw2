@@ -63,20 +63,29 @@ def reformat(infile, outfile, errfile=sys.stderr):
     """
     # Get the csv reader and writer.  Use these to read/write the files.
     reader = csv.reader(infile, delimiter=',')
-    writer = csv.writer(outfile, delimiter='|')
+    writer = csv.writer(outfile, delimiter='|', quotechar = '"')
 
     # Extract the first row of the file
+    header = reader.next()
 
     ## Reformat and write the header
+    header_new = _reformat_header(header)
+    len_header = len(header_new)
+    writer.writerow(header_new)
 
     ## Reformat and write the body
     for row_index, row in enumerate(reader):
         # Ca
         try:
             # Call _checkrowlength, get a new_row, write it
+            _checkrowlength(row, row_index, len_header)
+            
+            # chance wrtier to _reformate_item
+            new_row = [_reformat_item(item) for item in row]
+            writer.writerow(new_row)
             pass
         except common.BadDataError as e:
-            # Write the error message
+            errfile.write(e.message)
             pass
 
 
@@ -97,7 +106,11 @@ def _checkrowlength(row, row_index, len_header):
     # Your stderr message should be:
     # message = 'BadDataError. %d items in row %d.  Should have been %d. '\
     # 'Row = %s\n' % (len(row), row_index, len_header, row)
-
+    if len(row) != len_header:
+        message = 'BadDataError. %d items in row %d.  Should have been %d. '\
+                'Row = %s\n' % (len(row), row_index, len_header, row)
+        raise common.BadDataError(message)
+        
 
 def _reformat_item(item):
     """
@@ -121,7 +134,8 @@ def _reformat_item(item):
     # quote character
 
     # Replace pipes in the text body with nothing '' (no space)
-
+    new_item = item.replace("|", "")
+    return new_item
 
 
 def _reformat_header(header):
@@ -137,6 +151,10 @@ def _reformat_header(header):
         Header from infile, as read by a csv reader
     """
     new_header = []
+    for hd in header:
+        hd = hd.lower()
+        hd = hd.replace(' ', '_')
+        new_header.append(hd)
 
     # Loop through the header and populate new_header
         # Replace spaces with underscores
